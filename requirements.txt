@@ -1,0 +1,3 @@
+conda activate IYO
+cd C:\Users\iyosa\Desktop\resume-app-main
+streamlit run streamlit_app.py
