@@ -496,4 +496,3 @@ if data_pred is not None:
       st.write(hasil_akhir)
     with layout[2]:
       st.write(probabilitas)
-
