@@ -22,7 +22,7 @@ from sklearn.metrics import confusion_matrix, classification_report
 image=Image.open('/content/enchanted/logo.png')
 logo = st.columns((1.6, 0.7, 0.7))
 
-with open("style.css") as f:
+with open("/content/enchanted/style.css") as f:
     st.markdown('<style>{}</style>'.format(f.read()), unsafe_allow_html=True)
 
 #page layout
@@ -328,6 +328,60 @@ if dataset is not None:
   st.set_option('deprecation.showPyplotGlobalUse', False)
   st.pyplot()
   st.text('mengurutkan korelasi setiap kolom terhadap kelasnya(enrolled)')
+else:
+    if "load_state" not in st.session_state:
+        st.session_state.load_state = False
+    if st.sidebar.button('Use sample') or st.session_state.load_state:
+        st.session_state.load_state = True
+        df = pd.read_csv('/content/enchanted/data/fintech_data.csv') 
+        # df=load_dataset(dataset)
+        st.write(df)
+        df1=preprocessing(df)
+        container = st.columns((1.9, 1.1))
+        df1_types = df1.dtypes.astype(str)
+        
+        with container[0]:
+            st.write(df1)
+            st.markdown('''
+            Merevisi kolom numscreens''')
+            # st.text('Merevisi kolom numscreens')
+        with container[1]:
+            st.write(df1_types)
+            st.markdown('''
+            Merevisi kolom numscreens''')
+            # st.text('Tipe data setiap kolom')
+        
+        df2=preprocessing_hour(df1)
+        container1 = st.columns((1.9, 1.1))
+        df2_types = df2.dtypes.astype(str)
+        with container1[0]:
+            st.write(df2)
+            st.text('Merevisi kolom hour')
+        with container1[1]:
+            st.write(df2_types)
+            st.text('Tipe data setiap kolom')
+
+        df3=preprocessing_top_screens(df2)
+        st.write(df3)
+        st.text('Mengubah isi screen_list menjadi kolom baru')
+
+        df_numerik, mutuals = funneling(df3)
+        st.write(df_numerik)
+        #membuat plot korelasi tiap kolom dengan enrolled
+        korelasi = df_numerik.drop(columns=['enrolled'], inplace=False).corrwith(df_numerik.enrolled)
+        plot=korelasi.plot.bar(title='korelasi variabel')
+        st.set_option('deprecation.showPyplotGlobalUse', False)
+        st.pyplot()
+        st.text('Membuat plot korelasi tiap koklom terhadap kelasnya(enrolled)')
+        #   from sklearn.feature_selection import mutual_info_classif
+        #   #determine the mutual information
+        #   mutual_info = mutual_info_classif(df_numerik.drop(columns=['enrolled']), df_numerik.enrolled)
+        #   mutual_info = pd.Series(mutual_info)
+        #   mutual_info.index = df_numerik.drop(columns=['enrolled']).columns
+        #   mutual_info.sort_values(ascending=False)
+        mutuals.sort_values(ascending=False).plot.bar(title='urutannya')
+        st.set_option('deprecation.showPyplotGlobalUse', False)
+        st.pyplot()
   
 
 st.markdown('''
@@ -442,3 +496,4 @@ if data_pred is not None:
       st.write(hasil_akhir)
     with layout[2]:
       st.write(probabilitas)
+
