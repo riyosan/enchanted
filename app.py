@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import mutual_info_classif
 from sklearn.metrics import confusion_matrix, classification_report
 
-image=Image.open('logo.png')
+image=Image.open('/content/enchanted/logo.png')
 logo = st.columns((1.6, 0.7, 0.7))
 
 with open("style.css") as f:
@@ -104,8 +104,8 @@ def preprocessing_top_screens(df2):
   # from collections import Counter
   # p = Counter(' '.join(b).split()).most_common(100)
   # rslt = pd.DataFrame(p)
-  # rslt.to_csv('data/top_screens.csv', index=False)
-  top_screens=pd.read_csv('data/top_screens.csv')
+  # rslt.to_csv('/content/enchanted/data/top_screens.csv', index=False)
+  top_screens=pd.read_csv('/content/enchanted/data/top_screens.csv')
   # diubah ke numppy arry dan mengambil kolom ke2 saja karna kolom1 isinya nomor
   top_screens=np.array(top_screens.loc[:,'top_screens'])
   df3 = df2.copy()
@@ -130,7 +130,7 @@ def preprocessing_pred(df_pred):
   #karena tipe data first_open itu adalah string, maka perlu diubah ke datetime
   df.first_open=[parser.parse(i) for i in df.first_open]
   #import top_screen
-  top_screens=pd.read_csv('top_screens.csv')
+  top_screens=pd.read_csv('/content/enchanted/data/top_screens.csv')
   top_screens=np.array(top_screens.loc[:,'top_screens'])
   for i in top_screens:
       df[i]=df.screen_list.str.contains(i).astype(int)
@@ -156,12 +156,12 @@ def preprocessing_pred(df_pred):
   df.drop(columns=layar_cc, inplace=True)
   #mendefenisikan variabel numerik
   pred_numerik=df.drop(columns=['first_open','screen_list','user'], inplace=False)
-  scaler = joblib.load('data/standar.joblib')
-  fitur = pd.read_csv('data/fitur_pilihan.csv')
+  scaler = joblib.load('/content/enchanted/data/standar.joblib')
+  fitur = pd.read_csv('/content/enchanted/data/fitur_pilihan.csv')
   fitur = fitur['0'].tolist()
   pred_numerik = pred_numerik[fitur]
   pred_numerik = scaler.transform(pred_numerik)
-  model = joblib.load('data/stack_model.pkl')
+  model = joblib.load('/content/enchanted/data/stack_model.pkl')
   prediksi = model.predict(pred_numerik)
   probabilitas = model.predict_proba(pred_numerik)
   user_id = df['user']
@@ -191,7 +191,14 @@ def funneling(df3):
   df3.drop(columns=layar_cc, inplace=True)
   #menghilangkan kolom yang ga relevan
   df_numerik=df3.drop(columns=['user','first_open','screen_list','enrolled_date','selisih','numscreens'], inplace=False)
-  return df_numerik
+  df_numerik.to_csv('/content/enchanted/data/df_numerik.csv', index=False)
+  from sklearn.feature_selection import mutual_info_classif
+  #determine the mutual information
+  mutual_info = mutual_info_classif(df_numerik.drop(columns=['enrolled']), df_numerik.enrolled)
+  mutual_info = pd.Series(mutual_info)
+  mutual_info.index = df_numerik.drop(columns=['enrolled']).columns
+  mutuals = mutual_info.sort_values(ascending=False)
+  return df_numerik, mutuals
 
 @st.experimental_memo
 def choose_feature(df_numerik, jumlah_fitur):
@@ -204,7 +211,7 @@ def choose_feature(df_numerik, jumlah_fitur):
   fitur_terpilih = SelectKBest(mutual_info_classif, k = jumlah_fitur)
   fitur_terpilih.fit(df.drop(columns=['enrolled']), df.enrolled)
   pilhan_kolom = df.drop(columns=['enrolled']).columns[fitur_terpilih.get_support()]
-  pd.Series(pilhan_kolom).to_csv('data/fitur_pilihan.csv',index=False)
+  pd.Series(pilhan_kolom).to_csv('/content/enchanted/data/fitur_pilihan.csv',index=False)
   fitur = pilhan_kolom.tolist()
   fitur_baru = df[fitur]
   return fitur_baru
@@ -213,7 +220,7 @@ def choose_feature(df_numerik, jumlah_fitur):
 def standarization(fitur_baru):
   sc_X = StandardScaler()
   pilhan_kolom = sc_X.fit_transform(fitur_baru)
-  joblib.dump(sc_X, 'data/standar.joblib')
+  joblib.dump(sc_X, '/content/enchanted/data/standar.joblib')
   return pilhan_kolom
 
 @st.experimental_memo
@@ -259,7 +266,7 @@ def stack_model(X_train, X_test, y_train, y_test, tetangga, nb, rf):
   # Evaluate model
   matrik_stack = (classification_report(y_test, y_test_pred))
   cm_label_stack = pd.DataFrame(confusion_matrix(y_test, y_test_pred), columns=np.unique(y_test), index=np.unique(y_test))
-  joblib.dump(stack_model, 'data/stack_model.pkl')
+  joblib.dump(stack_model, '/content/enchanted/data/stack_model.pkl')
   return matrik_stack, cm_label_stack,y_test_pred
 
 #####################
@@ -303,7 +310,7 @@ if dataset is not None:
   st.write(df3)
   st.text('Mengubah isi screen_list menjadi kolom baru')
 
-  df_numerik=funneling(df3)
+  df_numerik, mutuals = funneling(df3)
   st.write(df_numerik)
   #membuat plot korelasi tiap kolom dengan enrolled
   korelasi = df_numerik.drop(columns=['enrolled'], inplace=False).corrwith(df_numerik.enrolled)
@@ -311,13 +318,13 @@ if dataset is not None:
   st.set_option('deprecation.showPyplotGlobalUse', False)
   st.pyplot()
   st.text('Membuat plot korelasi tiap koklom terhadap kelasnya(enrolled)')
-  from sklearn.feature_selection import mutual_info_classif
-  #determine the mutual information
-  mutual_info = mutual_info_classif(df_numerik.drop(columns=['enrolled']), df_numerik.enrolled)
-  mutual_info = pd.Series(mutual_info)
-  mutual_info.index = df_numerik.drop(columns=['enrolled']).columns
-  mutual_info.sort_values(ascending=False)
-  mutual_info.sort_values(ascending=False).plot.bar(title='urutannya')
+#   from sklearn.feature_selection import mutual_info_classif
+#   #determine the mutual information
+#   mutual_info = mutual_info_classif(df_numerik.drop(columns=['enrolled']), df_numerik.enrolled)
+#   mutual_info = pd.Series(mutual_info)
+#   mutual_info.index = df_numerik.drop(columns=['enrolled']).columns
+#   mutual_info.sort_values(ascending=False)
+  mutuals.sort_values(ascending=False).plot.bar(title='urutannya')
   st.set_option('deprecation.showPyplotGlobalUse', False)
   st.pyplot()
   st.text('mengurutkan korelasi setiap kolom terhadap kelasnya(enrolled)')
@@ -336,7 +343,8 @@ if "load_state" not in st.session_state:
   st.session_state.load_state = False
 if st.sidebar.button('Latih & Uji') or st.session_state.load_state:
   st.session_state.load_state = True
-  df_numerik = funneling(df3)
+  df_numerik = pd.read_csv('/content/enchanted/data/df_numerik.csv')
+#   df_numerik = funneling(df3)
   fitur_baru = choose_feature(df_numerik, jumlah_fitur)
   pilhan_kolom=standarization(fitur_baru)
   X_train, X_test, y_train, y_test = split(df_numerik,pilhan_kolom, split_size)
@@ -398,7 +406,7 @@ if st.sidebar.button('Latih & Uji') or st.session_state.load_state:
   st.write(" ")      
 
   #take df3 from apps/praproses.py
-  df1 = preprocessing_top_screens(df2)
+  df1 = df3
   var_enrolled = df1['enrolled']
   # #membagi menjadi train dan test untuk mencari user id
   X_train, X_test, y_train, y_test = train_test_split(df1, df1['enrolled'], test_size=(100-split_size)/100, random_state=111)
@@ -434,4 +442,3 @@ if data_pred is not None:
       st.write(hasil_akhir)
     with layout[2]:
       st.write(probabilitas)
-
